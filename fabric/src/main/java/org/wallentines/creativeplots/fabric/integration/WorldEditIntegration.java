@@ -9,7 +9,6 @@ import com.sk89q.worldedit.extension.platform.AbstractPlayerActor;
 import com.sk89q.worldedit.extent.AbstractDelegateExtent;
 import com.sk89q.worldedit.extent.Extent;
 import com.sk89q.worldedit.extent.NullExtent;
-import com.sk89q.worldedit.math.BlockVector2;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.util.Location;
 import com.sk89q.worldedit.util.eventbus.Subscribe;
@@ -23,9 +22,11 @@ import org.wallentines.creativeplots.api.math.Region;
 import org.wallentines.creativeplots.api.plot.IPlot;
 import org.wallentines.creativeplots.api.plot.IPlotWorld;
 import org.wallentines.midnightcore.api.MidnightCoreAPI;
+import org.wallentines.midnightcore.api.server.MServer;
 import org.wallentines.midnightlib.math.Vec3i;
 import org.wallentines.midnightcore.api.player.MPlayer;
 
+import java.util.Objects;
 import java.util.UUID;
 
 public class WorldEditIntegration {
@@ -34,7 +35,7 @@ public class WorldEditIntegration {
 
         private final Iterable<Region> regions;
 
-        public static final BaseBlock AIR = BlockTypes.AIR.getDefaultState().toBaseBlock();
+        public static final BaseBlock AIR = Objects.requireNonNull(BlockTypes.AIR).getDefaultState().toBaseBlock();
         public static final BlockState AIR_STATE = BlockTypes.AIR.getDefaultState();
 
         protected PlotExtent(Extent extent, Iterable<Region> regions) {
@@ -51,7 +52,7 @@ public class WorldEditIntegration {
         }
 
         @Override
-        public boolean setBlock(BlockVector3 location, BlockStateHolder block) throws WorldEditException {
+        public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 location, T block) throws WorldEditException {
             return blockWithin(location.getBlockX(), location.getBlockY(), location.getBlockZ()) && super.setBlock(location, block);
         }
 
@@ -64,8 +65,8 @@ public class WorldEditIntegration {
         }
 
         @Override
-        public boolean setBiome(BlockVector2 position, BiomeType biome) {
-            return blockWithin(position.getX(), 64, position.getZ()) && super.setBiome(position, biome);
+        public boolean setBiome(BlockVector3 position, BiomeType biome) {
+            return blockWithin(position.getX(), position.getY(), position.getZ()) && super.setBiome(position, biome);
         }
 
         @Override
@@ -95,7 +96,10 @@ public class WorldEditIntegration {
                 AbstractPlayerActor act = (AbstractPlayerActor) event.getActor();
                 UUID u = act.getUniqueId();
 
-                MPlayer player = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(u);
+                MServer server = MidnightCoreAPI.getRunningServer();
+                if(server == null) throw new IllegalStateException("Server has not been started!");
+
+                MPlayer player = server.getPlayer(u);
 
                 if(player.hasPermission("creativeplots.editanywhere", 4)) return;
 

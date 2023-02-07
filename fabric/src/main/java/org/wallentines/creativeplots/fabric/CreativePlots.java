@@ -1,21 +1,20 @@
 package org.wallentines.creativeplots.fabric;
 
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.wallentines.creativeplots.api.CreativePlotsAPI;
-import org.wallentines.creativeplots.api.plot.IPlotWorld;
+import org.wallentines.creativeplots.common.CreativePlotsImpl;
 import org.wallentines.creativeplots.common.Plot;
 import org.wallentines.creativeplots.common.PlotWorld;
 import org.wallentines.creativeplots.fabric.generator.PlotworldGenerator;
+import org.wallentines.mdcfg.codec.JSONCodec;
+import org.wallentines.midnightcore.api.text.PlaceholderManager;
 import org.wallentines.midnightcore.common.util.FileUtil;
-import org.wallentines.midnightcore.fabric.event.MidnightCoreAPICreatedEvent;
 import org.wallentines.midnightcore.fabric.event.server.CommandLoadEvent;
 import org.wallentines.midnightcore.fabric.event.server.ServerStopEvent;
-import org.wallentines.midnightlib.config.ConfigRegistry;
-import org.wallentines.midnightlib.config.ConfigSection;
-import org.wallentines.midnightcore.api.module.lang.LangModule;
+import org.wallentines.mdcfg.ConfigSection;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
-import org.wallentines.midnightlib.config.serialization.json.JsonConfigProvider;
 import org.wallentines.midnightlib.event.Event;
 
 import java.nio.file.Path;
@@ -31,34 +30,21 @@ public class CreativePlots implements ModInitializer {
             throw new IllegalStateException("Unable to create data directory " + dataFolder);
         }
 
-        ConfigRegistry.INSTANCE.registerSerializer(PlotWorld.class, PlotWorld.SERIALIZER);
-
         new PlotListener().register();
 
-        ConfigSection langDefaults = JsonConfigProvider.INSTANCE.loadFromStream(getClass().getResourceAsStream("/creativeplots/lang/en_us.json"));
-        ConfigSection configDefaults = JsonConfigProvider.INSTANCE.loadFromStream(getClass().getResourceAsStream("/creativeplots/config.json"));
+        ConfigSection langDefaults = JSONCodec.loadConfig(getClass().getResourceAsStream("/creativeplots/lang/en_us.json")).asSection();
+        ConfigSection configDefaults = JSONCodec.loadConfig(getClass().getResourceAsStream("/creativeplots/config.json")).asSection();
 
-        Registry.register(Registry.CHUNK_GENERATOR, new ResourceLocation("creativeplots", "plotworld"), PlotworldGenerator.CODEC);
+        Registry.register(BuiltInRegistries.CHUNK_GENERATOR, new ResourceLocation("creativeplots", "plotworld"), PlotworldGenerator.CODEC);
 
-        Event.register(MidnightCoreAPICreatedEvent.class, this, event -> {
+        new CreativePlotsImpl(dataFolder, langDefaults, configDefaults);
 
-            CreativePlotsAPI capi = new CreativePlotsAPI(dataFolder, event.getAPI(), langDefaults, configDefaults);
+        PlotWorld.registerPlaceholders(PlaceholderManager.INSTANCE);
+        Plot.registerPlaceholders(PlaceholderManager.INSTANCE);
 
-            LangModule mod = event.getAPI().getModuleManager().getModule(LangModule.class);
-            PlotWorld.registerPlaceholders(mod);
-            Plot.registerPlaceholders(mod);
 
-        });
-
-        Event.register(CommandLoadEvent.class, this, event -> {
-
-            new MainCommand().register(event.getDispatcher());
-        });
-
-        Event.register(ServerStopEvent.class, this, event -> {
-
-            CreativePlotsAPI.getInstance().saveWorlds();
-        });
+        Event.register(CommandLoadEvent.class, this, event -> new MainCommand().register(event.getDispatcher()));
+        Event.register(ServerStopEvent.class, this, event -> CreativePlotsAPI.getInstance().saveWorlds());
 
     }
 }

@@ -1,11 +1,13 @@
 package org.wallentines.creativeplots.fabric.generator;
 
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.Lifecycle;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.*;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.chunk.ChunkGeneratorStructureState;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
+import org.jetbrains.annotations.NotNull;
 import org.wallentines.creativeplots.api.math.Region;
 import org.wallentines.creativeplots.api.plot.PlotPos;
 import net.minecraft.server.level.WorldGenRegion;
@@ -22,11 +24,9 @@ import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.flat.FlatLayerInfo;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
-import org.wallentines.midnightcore.api.MidnightCoreAPI;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -41,7 +41,7 @@ public class PlotworldGenerator extends ChunkGenerator {
     private final PlotworldGeneratorSettings plotworld;
 
     public PlotworldGenerator(PlotworldGeneratorSettings world) {
-        super(new MappedRegistry<>(Registry.STRUCTURE_SET_REGISTRY, Lifecycle.stable(), (t) -> null), Optional.empty(), new FixedBiomeSource(world.biome));
+        super(new FixedBiomeSource(world.biome));
         this.plotworld = world;
     }
 
@@ -49,7 +49,7 @@ public class PlotworldGenerator extends ChunkGenerator {
     public void applyBiomeDecoration(WorldGenLevel worldGenLevel, ChunkAccess chunkAccess, StructureManager structureFeatureManager) { }
 
     @Override
-    protected Codec<? extends ChunkGenerator> codec() {
+    protected @NotNull Codec<? extends ChunkGenerator> codec() {
         return CODEC;
     }
 
@@ -114,8 +114,6 @@ public class PlotworldGenerator extends ChunkGenerator {
 
     public void regenerateRegion(Region r, Level l) {
 
-        MidnightCoreAPI.getLogger().warn("regenerating...");
-
         int height = plotworld.getGenerationHeight();
         BlockState roadState = plotworld.getRoadBlock();
         BlockState borderState = plotworld.getBorderBlock();
@@ -171,7 +169,7 @@ public class PlotworldGenerator extends ChunkGenerator {
     }
 
     @Override
-    public NoiseColumn getBaseColumn(int i, int j, LevelHeightAccessor acc, RandomState state) {
+    public @NotNull NoiseColumn getBaseColumn(int i, int j, LevelHeightAccessor acc, RandomState state) {
 
         int height = plotworld.getGenerationHeight();
         BlockState[] states = new BlockState[height];
@@ -193,10 +191,10 @@ public class PlotworldGenerator extends ChunkGenerator {
     public void spawnOriginalMobs(WorldGenRegion worldGenRegion) {}
 
     @Override
-    public void createStructures(RegistryAccess registryAccess, RandomState state, StructureManager structureFeatureManager, ChunkAccess chunkAccess, StructureTemplateManager structureManager, long l) { }
+    public void createStructures(RegistryAccess registryAccess, ChunkGeneratorStructureState chunkGeneratorStructureState, StructureManager structureManager, ChunkAccess chunkAccess, StructureTemplateManager structureTemplateManager) {}
 
     @Override
-    public CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender, RandomState randomState, StructureManager structureFeatureManager, ChunkAccess chunkAccess) {
+    public @NotNull CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender, RandomState randomState, StructureManager structureFeatureManager, ChunkAccess chunkAccess) {
         return CompletableFuture.completedFuture(chunkAccess);
     }
 
@@ -233,8 +231,8 @@ public class PlotworldGenerator extends ChunkGenerator {
                         Codec.INT.fieldOf("road_size").forGetter(PlotworldGeneratorSettings::getRoadSize),
                         Codec.INT.fieldOf("generation_height").forGetter(PlotworldGeneratorSettings::getGenerationHeight),
                         Biome.CODEC.fieldOf("biome_id").forGetter(PlotworldGeneratorSettings::getBiome),
-                        Registry.BLOCK.byNameCodec().fieldOf("road_block").forGetter(settings -> settings.getRoadBlock().getBlock()),
-                        Registry.BLOCK.byNameCodec().fieldOf("border_block").forGetter(settings -> settings.getBorderBlock().getBlock()),
+                        BuiltInRegistries.BLOCK.byNameCodec().fieldOf("road_block").forGetter(settings -> settings.getRoadBlock().getBlock()),
+                        BuiltInRegistries.BLOCK.byNameCodec().fieldOf("border_block").forGetter(settings -> settings.getBorderBlock().getBlock()),
                         FlatLayerInfo.CODEC.listOf().fieldOf("layers").forGetter(PlotworldGeneratorSettings::getLayers)
                 ).apply(instance, instance.stable(PlotworldGeneratorSettings::new)));
 

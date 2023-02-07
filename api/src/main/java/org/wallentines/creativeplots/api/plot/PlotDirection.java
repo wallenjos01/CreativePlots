@@ -1,6 +1,9 @@
 package org.wallentines.creativeplots.api.plot;
 
+import org.wallentines.mdcfg.Tuples;
 import org.wallentines.midnightlib.math.Vec3i;
+
+import java.util.List;
 
 public enum PlotDirection {
 
@@ -10,9 +13,9 @@ public enum PlotDirection {
     WEST ("west",-1, 0);
 
 
-    String name;
-    int xs;
-    int zs;
+    final String name;
+    final int xs;
+    final int zs;
 
     PlotDirection(String name, int x, int z) {
 
@@ -35,7 +38,7 @@ public enum PlotDirection {
     }
 
     public boolean isPerpendicular(PlotDirection other) {
-        return (xs == 0 && other.xs != 0) || (zs == 0 && other.zs != 0);
+        return (Math.abs(xs) != Math.abs(other.xs));
     }
 
     public PlotDirection[] getPerpendicular() {
@@ -58,6 +61,10 @@ public enum PlotDirection {
         return zs;
     }
 
+    public int magnitude() {
+        return xs + zs;
+    }
+
     public Vec3i vector() {
         return new Vec3i(xs,0,zs);
     }
@@ -65,5 +72,12 @@ public enum PlotDirection {
     public Vec3i vectorInverted() {
         return new Vec3i(-1 * zs, 0, -1 * xs);
     }
+
+    public static final List<Tuples.T2<PlotDirection, PlotDirection>> DIAGONAL_DIRECTIONS = List.of(
+            new Tuples.T2<>(NORTH, WEST),
+            new Tuples.T2<>(NORTH, EAST),
+            new Tuples.T2<>(SOUTH, WEST),
+            new Tuples.T2<>(SOUTH, EAST)
+    );
 
 }

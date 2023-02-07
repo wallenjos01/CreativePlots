@@ -5,19 +5,17 @@ import org.wallentines.creativeplots.api.plot.IPlot;
 import org.wallentines.creativeplots.api.plot.IPlotRegistry;
 import org.wallentines.creativeplots.api.plot.IPlotWorld;
 import org.wallentines.creativeplots.api.plot.PlotPos;
+import org.wallentines.mdcfg.serializer.*;
 import org.wallentines.midnightcore.api.player.Location;
-import org.wallentines.midnightlib.config.ConfigSection;
-import org.wallentines.midnightlib.config.serialization.ConfigSerializer;
+import org.wallentines.midnightcore.api.text.PlaceholderManager;
+import org.wallentines.midnightcore.api.text.PlaceholderSupplier;
 import org.wallentines.midnightlib.math.Vec3d;
 import org.wallentines.midnightlib.math.Vec3i;
-import org.wallentines.midnightcore.api.module.lang.LangModule;
-import org.wallentines.midnightcore.api.module.lang.PlaceholderSupplier;
 import org.wallentines.midnightcore.api.player.MPlayer;
 import org.wallentines.midnightlib.registry.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class PlotWorld implements IPlotWorld {
@@ -57,13 +55,11 @@ public class PlotWorld implements IPlotWorld {
 
     @Override
     public int getPlotSize() {
-
         return plotSize;
     }
 
     @Override
     public int getRoadSize() {
-
         return roadSize;
     }
 
@@ -74,13 +70,11 @@ public class PlotWorld implements IPlotWorld {
 
     @Override
     public int getWorldHeight() {
-
         return worldHeight;
     }
 
     @Override
     public int getGenerationHeight() {
-
         return generationHeight;
     }
 
@@ -214,62 +208,50 @@ public class PlotWorld implements IPlotWorld {
 
     }
 
-
-    public static final ConfigSerializer<PlotWorld> SERIALIZER = new ConfigSerializer<>() {
-
+    public static final Serializer<PlotWorld> SERIALIZER = new Serializer<>() {
         @Override
-        public PlotWorld deserialize(ConfigSection section) {
-
-            int plotSize = section.getInt("plot_size");
-            int roadSize = section.getInt("road_size");
-            int worldHeight = section.getInt("world_height");
-            int worldFloor = section.getInt("world_floor");
-            int generationHeight = section.getInt("generation_height");
-
-            Identifier borderBlock = section.get("border_block", Identifier.class);
-            Identifier borderBlockClaimed = section.get("border_block_claimed", Identifier.class);
-
-            PlotWorld out = new PlotWorld(plotSize, roadSize, generationHeight, worldFloor, worldHeight, borderBlock, borderBlockClaimed);
-
-            if(section.has("plots", List.class)) {
-                List<ConfigSection> lst = section.getList("plots", ConfigSection.class);
-                for(ConfigSection sec : lst) {
-
-                    Plot p = Plot.fromConfig(out, sec);
-                    p.register(out.getPlotRegistry());
-                }
-            }
-
-            return out;
+        public <O> SerializeResult<O> serialize(SerializeContext<O> context, PlotWorld value) {
+            return INTERNAL_SERIALIZER.serialize(context, value).map(pw -> Plot.plotSerializer(value).listOf().serialize(context, value.plotRegistry.getUniquePlots()).flatMap(o -> context.set("plots", o, pw)));
         }
 
         @Override
-        public ConfigSection serialize(PlotWorld object) {
+        public <O> SerializeResult<PlotWorld> deserialize(SerializeContext<O> context, O value) {
+            SerializeResult<PlotWorld> out = INTERNAL_SERIALIZER.deserialize(context, value);
 
-            ConfigSection out = new ConfigSection();
-            out.set("plot_size", object.getPlotSize());
-            out.set("road_size", object.getRoadSize());
-            out.set("world_height", object.getWorldHeight());
-            out.set("world_floor", object.getWorldFloor());
-            out.set("generation_height", object.getGenerationHeight());
-            out.set("border_block", object.getUnclaimedBorderBlock());
-            out.set("border_block_claimed", object.getClaimedBorderBlock());
-
-            List<ConfigSection> plots = new ArrayList<>();
-            for(IPlot pl : object.getPlotRegistry()) {
-                plots.add(pl.serialize());
-            }
-            out.set("plots", plots);
-
-            return out;
+            return out.map(pw -> Plot.plotSerializer(pw).filteredListOf(CreativePlotsAPI.getLogger()::warn).deserialize(context, context.get("plots", value)).mapError(() -> SerializeResult.success(new ArrayList<>())).flatMap(plots -> {
+                plots.forEach(pl -> ((Plot) pl).register(pw.plotRegistry));
+                return pw;
+            }));
         }
     };
 
-    public static void registerPlaceholders(LangModule mod) {
+    private static final Serializer<PlotWorld> INTERNAL_SERIALIZER = ObjectSerializer.create(
+            NumberSerializer.forInt(1, 1000000).entry("plot_size", PlotWorld::getPlotSize),
+            NumberSerializer.forInt(1, 1000000).entry("road_size", PlotWorld::getRoadSize),
+            Serializer.INT.entry("generation_height", PlotWorld::getGenerationHeight),
+            Serializer.INT.entry("world_floor", PlotWorld::getWorldFloor),
+            Serializer.INT.entry("world_height", PlotWorld::getWorldHeight),
+            Identifier.serializer("minecraft").entry("border_block", PlotWorld::getUnclaimedBorderBlock),
+            Identifier.serializer("minecraft").entry("border_block_claimed", PlotWorld::getClaimedBorderBlock),
+            PlotWorld::new
+    );
 
-        mod.registerInlinePlaceholder("creativeplots_plotworld_id",   PlaceholderSupplier.create(IPlotWorld.class, pw -> CreativePlotsAPI.getInstance().getPlotWorldId(pw).toString()));
-        mod.registerInlinePlaceholder("creativeplots_plotworld_name", PlaceholderSupplier.create(IPlotWorld.class, pw -> CreativePlotsAPI.getInstance().getPlotWorldId(pw).getPath()));
+    public static void registerPlaceholders(PlaceholderManager manager) {
 
+        manager.getInlinePlaceholders().register("creativeplots_plotworld_id",   PlaceholderSupplier.create(IPlotWorld.class, pw -> CreativePlotsAPI.getInstance().getPlotWorldId(pw).toString()));
+        manager.getInlinePlaceholders().register("creativeplots_plotworld_name", PlaceholderSupplier.create(IPlotWorld.class, pw -> CreativePlotsAPI.getInstance().getPlotWorldId(pw).getPath()));
     }
 
+    @Override
+    public String toString() {
+        return "PlotWorld{" +
+                "worldHeight=" + worldHeight +
+                ", worldFloor=" + worldFloor +
+                ", generationHeight=" + generationHeight +
+                ", plotSize=" + plotSize +
+                ", roadSize=" + roadSize +
+                ", borderBlock=" + borderBlock +
+                ", borderBlockClaimed=" + borderBlockClaimed +
+                '}';
+    }
 }

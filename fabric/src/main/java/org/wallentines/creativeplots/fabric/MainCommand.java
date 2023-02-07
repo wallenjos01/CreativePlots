@@ -5,7 +5,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import me.lucko.fabric.api.permissions.v0.Permissions;
-import net.minecraft.world.level.Level;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.wallentines.creativeplots.api.CreativePlotsAPI;
 import org.wallentines.creativeplots.api.math.Region;
 import org.wallentines.creativeplots.api.plot.IPlot;
@@ -14,19 +14,18 @@ import org.wallentines.creativeplots.api.plot.PlotDirection;
 import org.wallentines.creativeplots.api.plot.PlotPos;
 import org.wallentines.creativeplots.common.Plot;
 import org.wallentines.creativeplots.fabric.generator.PlotworldGenerator;
-import org.wallentines.midnightcore.api.MidnightCoreAPI;
+import org.wallentines.mdcfg.Tuples;
 import org.wallentines.midnightcore.api.item.InventoryGUI;
 import org.wallentines.midnightcore.api.item.MItemStack;
 import org.wallentines.midnightcore.api.player.Location;
+import org.wallentines.midnightcore.api.text.CustomPlaceholderInline;
 import org.wallentines.midnightcore.api.text.MTextComponent;
 import org.wallentines.midnightcore.api.text.TextColor;
 import org.wallentines.midnightcore.fabric.util.CommandUtil;
 import org.wallentines.midnightlib.math.Color;
 import org.wallentines.midnightlib.math.Vec3d;
 import org.wallentines.midnightlib.math.Vec3i;
-import org.wallentines.midnightcore.api.module.lang.CustomPlaceholderInline;
 import org.wallentines.midnightcore.api.player.MPlayer;
-import org.wallentines.midnightcore.api.text.MComponent;
 import org.wallentines.midnightcore.api.text.MStyle;
 import org.wallentines.midnightcore.fabric.player.FabricPlayer;
 import org.wallentines.midnightcore.fabric.util.ConversionUtil;
@@ -36,15 +35,13 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class MainCommand {
 
@@ -145,6 +142,7 @@ public class MainCommand {
             return 0;
         }
 
+        // Register a new plot
         plot = new Plot(pw, pos.getX() + "," + pos.getZ(), pos);
         plot.setOwner(pl.getUUID());
 
@@ -153,21 +151,46 @@ public class MainCommand {
         CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.claim.success");
         plot.onEnter(pl);
 
-        Region reg = pos.toRegion(pw).outset(1);
-        BlockPos.MutableBlockPos bpos = new BlockPos.MutableBlockPos();
 
         ServerLevel l = context.getSource().getLevel();
-        BlockState state = Registry.BLOCK.get(ConversionUtil.toResourceLocation(pw.getClaimedBorderBlock())).defaultBlockState();
-        for (int x = reg.getLowerBound().getX(); x < reg.getUpperBound().getX() + 1; x++) {
-            for (int z = reg.getLowerBound().getZ(); z < reg.getUpperBound().getZ() + 1; z++) {
+        BlockState state = BuiltInRegistries.BLOCK.get(ConversionUtil.toResourceLocation(pw.getClaimedBorderBlock())).defaultBlockState();
+        int borderHeight = pw.getGenerationHeight() + 1;
 
-                if (!PlotPos.isPlotBorder(x, z, pw.getPlotSize(), pw.getRoadSize())) continue;
+        Region reg = pos.getRegion(pw);
+        BlockPos.MutableBlockPos bpos = new BlockPos.MutableBlockPos();
+//
+//        Vec3i lower = reg.getLowerBound();
+//        Vec3i upper = reg.getUpperBound();
+//
+//        for(int x = lower.getX() - 1 ; x < upper.getX() + 1 ; x++) {
+//            bpos.set(x, borderHeight, lower.getZ() - 1);
+//            l.setBlock(bpos, state, 2);
+//            bpos.set(x, borderHeight, upper.getZ());
+//            l.setBlock(bpos, state, 2);
+//        }
+//
+//        for(int z = lower.getZ() ; z < upper.getZ() ; z++) {
+//            bpos.set(lower.getX() - 1, borderHeight, z);
+//            l.setBlock(bpos, state, 2);
+//            bpos.set(upper.getX(), borderHeight, z);
+//            l.setBlock(bpos, state, 2);
+//        }
 
-                bpos.set(x, pw.getGenerationHeight() + 1, z);
-                l.setBlock(bpos, state, 2);
-                l.blockUpdated(bpos, state.getBlock());
-            }
-        }
+        reg.forEachBorder(vec2i -> {
+            bpos.set(vec2i.getX(), borderHeight, vec2i.getY());
+            l.setBlock(bpos, state, 2);
+        });
+
+//        for (int x = reg.getLowerBound().getX(); x < reg.getUpperBound().getX() + 1; x++) {
+//            for (int z = reg.getLowerBound().getZ(); z < reg.getUpperBound().getZ() + 1; z++) {
+//
+//                if (!PlotPos.isPlotBorder(x, z, pw.getPlotSize(), pw.getRoadSize())) continue;
+//
+//                bpos.set(x, pw.getGenerationHeight() + 1, z);
+//                l.setBlock(bpos, state, 2);
+//                l.blockUpdated(bpos, state.getBlock());
+//            }
+//        }
 
         return 1;
     }
@@ -190,15 +213,27 @@ public class MainCommand {
             return 0;
         }
 
-        InventoryGUI confirm = MidnightCoreAPI.getInstance().createGUI(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.title", pl));
-        confirm.setItem(3, MItemStack.Builder.woolWithColor(new TextColor(Color.fromRGBI(10))).withName(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.yes", pl)).build(), (type, user) -> {
-            doDelete(pw, plot, context.getSource().getLevel());
-            CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.delete.success");
-            confirm.close(user);
-        });
-        confirm.setItem(5, MItemStack.Builder.woolWithColor(new TextColor(Color.fromRGBI(12))).withName(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.no", pl)).build(),  (type, user) -> {
-            confirm.close(user);
-        });
+        InventoryGUI confirm = pl.getServer().getMidnightCore().createGUI(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.title", pl));
+        confirm.setItem(
+                3,
+                MItemStack.Builder
+                        .woolWithColor(new TextColor(Color.fromRGBI(10)))
+                        .withName(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.yes", pl))
+                        .build(),
+                (type, user) -> {
+                    doDelete(pw, plot, context.getSource().getLevel());
+                    CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.delete.success");
+                    confirm.close(user);
+                });
+
+        confirm.setItem(
+                5,
+                MItemStack.Builder
+                        .woolWithColor(new TextColor(Color.fromRGBI(12)))
+                        .withName(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.no", pl))
+                        .build(),
+                (type, user) -> confirm.close(user));
+
         confirm.open(pl, 0);
 
         return 1;
@@ -443,100 +478,103 @@ public class MainCommand {
             return 0;
         }
 
-
-        plot.merge(other);
-        ((Plot) plot).register(pw.getPlotRegistry());
-
         CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.merge.success");
 
         ServerLevel l = context.getSource().getLevel();
 
         ChunkGenerator gen = l.getChunkSource().getGenerator();
+        Set<Region> roads = null;
         if (gen instanceof PlotworldGenerator) {
+            roads = mergePlots(plot, other, pw);
+        }
+
+        plot.merge(other);
+        ((Plot) plot).register(pw.getPlotRegistry());
+
+
+        if (roads != null) {
 
             int height = pw.getGenerationHeight();
             BlockPos.MutableBlockPos bpos = new BlockPos.MutableBlockPos();
-            BlockState border = Registry.BLOCK.get(ConversionUtil.toResourceLocation(pw.getClaimedBorderBlock())).defaultBlockState();
+            BlockState border = BuiltInRegistries.BLOCK.get(ConversionUtil.toResourceLocation(pw.getClaimedBorderBlock())).defaultBlockState();
             BlockState air = Blocks.AIR.defaultBlockState();
             BlockState top = ((PlotworldGenerator) gen).settings().getBlockForLayer(pw.getGenerationHeight(), l.getMinBuildHeight());
-
-            List<Region> roads = new ArrayList<>();
-
-            int plotSize = pw.getPlotSize();
-            int roadSize = pw.getRoadSize();
-            int halfSize = plotSize / 2;
-
-            // Roads
-            for(PlotPos p : new PlotPos[] { pos, otherPos } ) {
-
-                Vec3i loc = pw.toLocation(p).add(halfSize);
-
-                for (PlotDirection d : PlotDirection.values()) {
-
-                    if(!plot.getPositions().contains(p.getAdjacent(d))) continue;
-
-                    Vec3i r0 = new Vec3i(
-                            loc.getX() + (halfSize * d.getXShift()),
-                            0,
-                            loc.getZ() + (halfSize * d.getZShift())
-                    );
-
-                    Vec3i r1 = new Vec3i(
-                            r0.getX() - (halfSize * d.getZShift()),
-                            0,
-                            r0.getZ() - (halfSize * d.getXShift())
-                    );
-
-                    Vec3i r2 = r1.add(new Vec3i(
-                            (plotSize * d.getZShift()) + (roadSize * d.getXShift()),
-                            0,
-                            (plotSize * d.getXShift()) + (roadSize * d.getZShift()))
-                    );
-
-                    Region crossed = Region.fromPoints(r1, r2);
-                    roads.add(crossed);
-                }
-
-                // Corners
-                boolean[] corners = { true, true, true, true };
-                for(int x = -1 ; x <= 1 ; x++) {
-                    for(int z = -1 ; z <= 1 ; z++) {
-
-                        if(x == 0 && z == 0) continue;
-
-                        PlotPos surrounding = new PlotPos(p.getX() + x, p.getZ() + z);
-                        if(!plot.getPositions().contains(surrounding)) {
-                            if(x <= 0 && z <= 0) {
-                                corners[0] = false;
-                            }
-                            if(x >= 0 && z <= 0) {
-                                corners[1] = false;
-                            }
-                            if(x <= 0 && z >= 0) {
-                                corners[2] = false;
-                            }
-                            if(x >= 0 && z >= 0) {
-                                corners[3] = false;
-                            }
-                        }
-                    }
-                }
-
-                for(int i = 0 ; i < 4 ; i++) {
-
-                    if(!corners[i]) continue;
-
-                    int shiftX = i % 2 == 0 ? -1 : 1;
-                    int shiftZ = i > 2 ? 1 : -1;
-
-                    Vec3i c1 = loc.add(new Vec3i(shiftX * halfSize, 0, shiftZ * halfSize));
-                    Vec3i c2 = new Vec3i(shiftX * roadSize, 0, shiftZ * roadSize);
-
-                    Region corner = Region.normalized(c1,c2);
-                    roads.add(corner);
-                }
-
-            }
+//
+//            int plotSize = pw.getPlotSize();
+//            int roadSize = pw.getRoadSize();
+//            int halfSize = plotSize / 2;
+//
+//            // Roads
+//            for(PlotPos p : new PlotPos[] { pos, otherPos } ) {
+//
+//                Vec3i loc = pw.toLocation(p).add(halfSize);
+//
+//                for (PlotDirection d : PlotDirection.values()) {
+//
+//                    if(!plot.getPositions().contains(p.getAdjacent(d))) continue;
+//
+//                    Vec3i r0 = new Vec3i(
+//                            loc.getX() + (halfSize * d.getXShift()),
+//                            0,
+//                            loc.getZ() + (halfSize * d.getZShift())
+//                    );
+//
+//                    Vec3i r1 = new Vec3i(
+//                            r0.getX() - (halfSize * d.getZShift()),
+//                            0,
+//                            r0.getZ() - (halfSize * d.getXShift())
+//                    );
+//
+//                    Vec3i r2 = r1.add(new Vec3i(
+//                            (plotSize * d.getZShift()) + (roadSize * d.getXShift()),
+//                            0,
+//                            (plotSize * d.getXShift()) + (roadSize * d.getZShift()))
+//                    );
+//
+//                    Region crossed = new Region(r1, r2);
+//                    roads.add(crossed);
+//                }
+//
+//                // Corners
+//                boolean[] corners = { true, true, true, true };
+//                for(int x = -1 ; x <= 1 ; x++) {
+//                    for(int z = -1 ; z <= 1 ; z++) {
+//
+//                        if(x == 0 && z == 0) continue;
+//
+//                        PlotPos surrounding = new PlotPos(p.getX() + x, p.getZ() + z);
+//                        if(!plot.getPositions().contains(surrounding)) {
+//                            if(x <= 0 && z <= 0) {
+//                                corners[0] = false;
+//                            }
+//                            if(x >= 0 && z <= 0) {
+//                                corners[1] = false;
+//                            }
+//                            if(x <= 0 && z >= 0) {
+//                                corners[2] = false;
+//                            }
+//                            if(x >= 0 && z >= 0) {
+//                                corners[3] = false;
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                for(int i = 0 ; i < 4 ; i++) {
+//
+//                    if(!corners[i]) continue;
+//
+//                    int shiftX = i % 2 == 0 ? -1 : 1;
+//                    int shiftZ = i > 2 ? 1 : -1;
+//
+//                    Vec3i c1 = loc.add(new Vec3i(shiftX * halfSize, 0, shiftZ * halfSize));
+//                    Vec3i c2 = new Vec3i(shiftX * roadSize, 0, shiftZ * roadSize);
+//
+//                    Region corner = Region.normalized(c1,c2);
+//                    roads.add(corner);
+//                }
+//
+//            }
 
             // Remove roads
             for(Region road : roads) {
@@ -558,23 +596,76 @@ public class MainCommand {
             // Fix Borders
             for(Region reg : plot.getArea()) {
 
-                Region newReg = reg.outset(1);
-                for(int x = newReg.getLowerBound().getX() ; x <= newReg.getUpperBound().getX() ; x++) {
-                    for(int z = newReg.getLowerBound().getZ() ; z <= newReg.getUpperBound().getZ() ; z++) {
+                reg.forEachBorder(vec2i -> {
+                    if(plot.contains(new Vec3i(vec2i.getX(),height,vec2i.getY()))) return;
+                    bpos.set(vec2i.getX(), height + 1, vec2i.getY());
+                    l.setBlock(bpos, border, 2);
+                });
 
-                        if(plot.contains(new Vec3i(x,height,z))) continue;
-
-                        bpos.set(x, height + 1, z);
-                        l.setBlock(bpos, border, 2);
-                        l.blockUpdated(bpos, border.getBlock());
-                    }
-                }
-
+//                Region newReg = reg.outset(1);
+//                for(int x = newReg.getLowerBound().getX() ; x <= newReg.getUpperBound().getX() ; x++) {
+//                    for(int z = newReg.getLowerBound().getZ() ; z <= newReg.getUpperBound().getZ() ; z++) {
+//
+//                        if(plot.contains(new Vec3i(x,height,z))) continue;
+//
+//                        bpos.set(x, height + 1, z);
+//                        l.setBlock(bpos, border, 2);
+//                        l.blockUpdated(bpos, border.getBlock());
+//                    }
+//                }
             }
         }
 
         return 1;
     }
 
+    private static Set<Region> mergePlots(IPlot plot1, IPlot plot2, IPlotWorld pw) {
 
+        Set<Region> regions = new HashSet<>();
+
+        boolean smaller = plot2.getPositions().size() < plot1.getPositions().size();
+
+        IPlot p1 = smaller ? plot2 : plot1;
+        IPlot p2 = smaller ? plot1 : plot2;
+
+        for(PlotPos pos : p1.getPositions()) {
+
+            List<PlotDirection> directions = new ArrayList<>(4);
+
+            for(PlotDirection pd : PlotDirection.values()) {
+                if(p2.getPositions().contains(pos.getAdjacent(pd))) {
+                    directions.add(pd);
+                }
+            }
+            EnumSet<PlotDirection> dirs = EnumSet.copyOf(directions);
+
+            for(PlotDirection pd : dirs) {
+                regions.add(pos.getRoad(pd, pw));
+            }
+
+            // Check for corners
+            for(PlotDirection pd : PlotDirection.values()) {
+                if(!dirs.contains(pd) && p1.getPositions().contains(pos.getAdjacent(pd))) {
+                    directions.add(pd);
+                }
+            }
+            if(directions.size() == 0) continue;
+
+            dirs = EnumSet.copyOf(directions);
+
+            for(Tuples.T2<PlotDirection, PlotDirection> diagonal : PlotDirection.DIAGONAL_DIRECTIONS) {
+
+                PlotDirection ns = diagonal.p1;
+                PlotDirection ew = diagonal.p2;
+
+                if(dirs.contains(ns) && dirs.contains(ew)) {
+                    if(p2.getPositions().contains(pos.getDiagonal(ns, ew))) {
+                        regions.add(pos.getIntersection(ns, ew, pw));
+                    }
+                }
+            }
+        }
+
+        return regions;
+    }
 }

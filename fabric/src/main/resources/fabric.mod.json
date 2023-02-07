@@ -8,9 +8,7 @@
       "${group}.${id}.${target}.${mainClass}"
     ]
   },
-  "mixins": [
-    "${id}.mixins.json"
-  ],
+  "mixins": [ ],
   "depends": {
     "fabricloader": ">=${fabricLoader}",
     "minecraft": "${minecraftVersion}"
@@ -25,6 +23,6 @@
       "name": "M1dnight_Ninja"
     }
   ],
-  "lisence": "LGPL",
+  "license": "LGPL",
   "icon": "${id}/icon.png"
 }

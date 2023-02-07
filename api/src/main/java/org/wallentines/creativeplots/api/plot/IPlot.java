@@ -1,13 +1,14 @@
 package org.wallentines.creativeplots.api.plot;
 
 import org.wallentines.creativeplots.api.math.Region;
-import org.wallentines.midnightlib.config.ConfigSection;
+import org.wallentines.mdcfg.serializer.Serializer;
 import org.wallentines.midnightlib.math.Vec3d;
 import org.wallentines.midnightlib.math.Vec3i;
 import org.wallentines.midnightcore.api.player.MPlayer;
 import org.wallentines.midnightcore.api.text.MComponent;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public interface IPlot {
@@ -85,7 +86,7 @@ public interface IPlot {
     List<Region> getArea();
 
 
-    List<PlotPos> getPositions();
+    Set<PlotPos> getPositions();
 
 
     boolean isDenied(UUID u);
@@ -107,7 +108,8 @@ public interface IPlot {
 
     void onLeave(MPlayer player);
 
-    ConfigSection serialize();
+
+    Serializer<IPlot> serializer(IPlotWorld world);
 
 
     Integer getTimeOfDay();

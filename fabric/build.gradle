@@ -53,6 +53,8 @@ dependencies {
     shade project(':api')
     shade project(':common')
 
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 
 }
 
@@ -103,4 +105,8 @@ shadowJar {
 remapJar {
     dependsOn(shadowJar)
     inputFile.set(shadowJar.archiveFile)
+}
+
+test {
+    useJUnitPlatform()
 }

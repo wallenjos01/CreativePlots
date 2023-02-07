@@ -1,5 +1,6 @@
 package org.wallentines.creativeplots.fabric;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.wallentines.creativeplots.api.CreativePlotsAPI;
 import org.wallentines.creativeplots.api.plot.IPlotWorld;
 import org.wallentines.creativeplots.fabric.integration.WorldEditIntegration;
@@ -17,7 +18,6 @@ import org.wallentines.midnightcore.fabric.player.FabricPlayer;
 import org.wallentines.midnightcore.fabric.util.ConversionUtil;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.PrimedTnt;
@@ -115,7 +115,7 @@ public class PlotListener {
 
         if(event.getItem().isEmpty()) return;
 
-        Identifier id = ConversionUtil.toIdentifier(Registry.ITEM.getKey(event.getItem().getItem()));
+        Identifier id = ConversionUtil.toIdentifier(BuiltInRegistries.ITEM.getKey(event.getItem().getItem()));
         if(!pw.canModify(pl, loc) && !CreativePlotsAPI.getInstance().isAllowedItem(id)) {
             event.setCancelled(true);
         }

@@ -4,32 +4,30 @@ import org.wallentines.creativeplots.api.CreativePlotsAPI;
 import org.wallentines.creativeplots.api.event.PlotEnterEvent;
 import org.wallentines.creativeplots.api.event.PlotLeaveEvent;
 import org.wallentines.creativeplots.api.math.Region;
+import org.wallentines.mdcfg.serializer.ObjectSerializer;
+import org.wallentines.mdcfg.serializer.SerializeContext;
+import org.wallentines.mdcfg.serializer.SerializeResult;
+import org.wallentines.mdcfg.serializer.Serializer;
 import org.wallentines.midnightcore.api.MidnightCoreAPI;
 import org.wallentines.midnightcore.api.player.Location;
-import org.wallentines.midnightcore.api.text.MTextComponent;
-import org.wallentines.midnightlib.config.ConfigSection;
+import org.wallentines.midnightcore.api.server.MServer;
+import org.wallentines.midnightcore.api.text.*;
 import org.wallentines.midnightlib.event.Event;
 import org.wallentines.midnightlib.math.Color;
 import org.wallentines.midnightlib.math.Vec3d;
 import org.wallentines.midnightlib.math.Vec3i;
-import org.wallentines.midnightcore.api.module.lang.LangModule;
-import org.wallentines.midnightcore.api.module.lang.PlaceholderSupplier;
 import org.wallentines.midnightcore.api.player.MPlayer;
-import org.wallentines.midnightcore.api.text.MComponent;
-import org.wallentines.midnightcore.api.text.MStyle;
 import org.wallentines.creativeplots.api.plot.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class Plot implements IPlot {
 
     private static final Pattern lint = Pattern.compile("[a-z0-9_.\\-:;,]+");
 
-    private final List<PlotPos> positions;
+    private final Set<PlotPos> positions;
+    private final PlotPos rootPosition;
     private final IPlotWorld map;
 
     private final String id;
@@ -37,8 +35,8 @@ public class Plot implements IPlot {
     private UUID owner;
     private MComponent friendlyName;
 
-    private final List<UUID> trusted;
-    private final List<UUID> denied;
+    private final Set<UUID> trusted;
+    private final Set<UUID> denied;
     private final List<Region> area;
 
     // Create a default plot at a given position
@@ -52,12 +50,35 @@ public class Plot implements IPlot {
 
         this.id = id;
         this.friendlyName = new MTextComponent(id).withStyle(new MStyle().withColor(Color.fromRGBI(6)));
-        this.positions = new ArrayList<>();
+        this.positions = new HashSet<>();
+        this.rootPosition = pos[0];
 
         positions.addAll(Arrays.asList(pos));
 
-        this.trusted = new ArrayList<>();
-        this.denied = new ArrayList<>();
+        this.trusted = new HashSet<>();
+        this.denied = new HashSet<>();
+        this.area = new ArrayList<>();
+
+        calculateArea();
+    }
+
+    public Plot(IPlotWorld map, String id, Collection<PlotPos> pos) {
+
+        this.map = map;
+
+        if(pos.size() == 0) {
+            throw new IllegalStateException("Unable to create plot! No valid positions found!");
+        }
+
+        this.id = id;
+        this.friendlyName = new MTextComponent(id).withStyle(new MStyle().withColor(Color.fromRGBI(6)));
+        this.positions = new HashSet<>();
+        this.rootPosition = pos.iterator().next();
+
+        positions.addAll(pos);
+
+        this.trusted = new HashSet<>();
+        this.denied = new HashSet<>();
         this.area = new ArrayList<>();
 
         calculateArea();
@@ -93,7 +114,7 @@ public class Plot implements IPlot {
 
     @Override
     public Vec3d getTeleportLocation() {
-        Vec3i blockPos = map.toLocation(positions.get(0));
+        Vec3i blockPos = map.toLocation(rootPosition);
         return new Vec3d(blockPos.getX() + 0.5, blockPos.getY(), blockPos.getZ() + 0.5);
     }
 
@@ -120,12 +141,7 @@ public class Plot implements IPlot {
     @Override
     public void merge(IPlot other) {
 
-        for(PlotPos pos : other.getPositions()) {
-            if(!positions.contains(pos)) {
-                positions.add(pos);
-            }
-        }
-
+        positions.addAll(other.getPositions());
         calculateArea();
     }
 
@@ -135,7 +151,7 @@ public class Plot implements IPlot {
     }
 
     @Override
-    public List<PlotPos> getPositions() {
+    public Set<PlotPos> getPositions() {
         return positions;
     }
 
@@ -161,7 +177,9 @@ public class Plot implements IPlot {
         if(u.equals(owner) || denied.contains(u)) return;
 
         denied.add(u);
-        MPlayer pl = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(u);
+
+        MServer srv = Objects.requireNonNull(MidnightCoreAPI.getRunningServer());
+        MPlayer pl = srv.getPlayer(u);
 
 
         int offset = map.getRoadSize() / 2;
@@ -209,7 +227,9 @@ public class Plot implements IPlot {
 
         if (owner == null) return CreativePlotsAPI.getInstance().getLangProvider().getMessage("plot.null_owner", pl);
 
-        MPlayer player = MidnightCoreAPI.getInstance().getPlayerManager().getPlayer(owner);
+        MServer server = Objects.requireNonNull(MidnightCoreAPI.getRunningServer());
+        MPlayer player = server.getPlayer(owner);
+
         return player.getName();
     }
 
@@ -218,12 +238,12 @@ public class Plot implements IPlot {
         area.clear();
 
         if(positions.size() == 1) {
-            area.add(positions.get(0).toRegion(map));
+            area.add(rootPosition.getRegion(map));
             return;
         }
 
-        int minX = positions.get(0).getX();
-        int minZ = positions.get(0).getZ();
+        int minX = rootPosition.getX();
+        int minZ = rootPosition.getZ();
         int maxX = minX;
         int maxZ = minZ;
 
@@ -295,9 +315,9 @@ public class Plot implements IPlot {
                             }
                         }
 
-                        Region l = new PlotPos(lower.getX() + minX, lower.getZ() + minZ).toRegion(this.map);
-                        Region h = new PlotPos(higher.getX() + minX, higher.getZ() + minZ).toRegion(this.map);
-                        area.add(new Region(l.getLowerBound(), h.getUpperBound().subtract(l.getLowerBound())));
+                        Region l = new PlotPos(lower.getX() + minX, lower.getZ() + minZ).getRegion(this.map);
+                        Region h = new PlotPos(higher.getX() + minX, higher.getZ() + minZ).getRegion(this.map);
+                        area.add(new Region(l.getLowerBound(), h.getUpperBound()));
 
                         break;
                     }
@@ -306,100 +326,48 @@ public class Plot implements IPlot {
         }
     }
 
-
-    /**
-     * Parses a config section to create a Plot Object
-     *
-     * @param section A configuration section to parse
-     * @return        A new plot object
-     * @throws IllegalStateException if the config section does not contain enough information
-     */
-    public static Plot fromConfig(IPlotWorld map, ConfigSection section) throws IllegalStateException {
-
-        List<ConfigSection> poss = section.getList("positions", ConfigSection.class);
-
-        PlotPos[] positions = new PlotPos[poss.size()];
-
-        for(int i = 0 ; i < poss.size() ; i++) {
-            ConfigSection sec = poss.get(i);
-
-            final int x = sec.getInt("x");
-            final int z = sec.getInt("z");
-
-            positions[i] = new PlotPos(x,z);
-        }
-
-        String id = section.getString("id");
-
-        if(!lint.matcher(id).matches()) {
-            throw new IllegalStateException("Unable to parse plot! Invalid ID!");
-        }
-
-        Plot out = new Plot(map, id, positions);
-
-        if(section.has("owner")) {
-            out.owner = UUID.fromString(section.getString("owner"));
-        }
-
-        if(section.has("name")) {
-            out.friendlyName = MComponent.parse(section.getString("name"));
-        }
-
-        if(section.has("trusted", List.class)) {
-            List<String> list = section.getListFiltered("trusted", String.class);
-            for(String s : list) {
-                out.trusted.add(UUID.fromString(s));
-            }
-        }
-
-        if(section.has("denied", List.class)) {
-            List<String> list = section.getListFiltered("denied", String.class);
-            for(String s : list) {
-                out.denied.add(UUID.fromString(s));
-            }
-        }
-
-        return out;
+    @Override
+    public Serializer<IPlot> serializer(IPlotWorld world) {
+        return plotSerializer(world);
     }
 
-    public ConfigSection serialize() {
-
-        ConfigSection out = new ConfigSection();
-
-        out.set("id", id);
-        out.set("name", friendlyName);
-
-        if(owner != null) {
-            out.set("owner", owner.toString());
-        }
-
-        List<ConfigSection> poss = new ArrayList<>();
-        for(PlotPos pos : positions) {
-            ConfigSection sec = new ConfigSection();
-            sec.set("x", pos.getX());
-            sec.set("z", pos.getZ());
-            poss.add(sec);
-        }
-        out.set("positions", poss);
-
-        if(trusted.size() > 0) {
-            List<String> trust = new ArrayList<>();
-            for (UUID u : trusted) {
-                trust.add(u.toString());
+    public static Serializer<IPlot> plotSerializer(IPlotWorld world) {
+        return new Serializer<>() {
+            final Serializer<Plot> internal = makeSerializer(world);
+            @Override
+            public <O> SerializeResult<O> serialize(SerializeContext<O> context, IPlot value) {
+                return internal.serialize(context, (Plot) value);
             }
-            out.set("trusted", trust);
-        }
 
-        if(denied.size() > 0) {
-            List<String> deny = new ArrayList<>();
-            for (UUID u : denied) {
-                deny.add(u.toString());
+            @Override
+            public <O> SerializeResult<IPlot> deserialize(SerializeContext<O> context, O value) {
+                return internal.deserialize(context, value).flatMap(ip -> ip);
             }
-            out.set("denied", deny);
-        }
+        };
+    }
 
-        return out;
+    private static Serializer<Plot> makeSerializer(IPlotWorld map) {
+        return ObjectSerializer.create(
+                PlotPos.SERIALIZER.listOf().entry("positions", Plot::getPositions),
+                Serializer.STRING.entry("id", Plot::getId),
+                MComponent.SERIALIZER.entry("name", Plot::getName).optional(),
+                Serializer.UUID.entry("owner", Plot::getOwner).optional(),
+                Serializer.UUID.listOf().<Plot>entry("trusted", p -> p.trusted).optional(),
+                Serializer.UUID.listOf().<Plot>entry("denied", p -> p.denied).optional(),
+                (pos, id, name, owner, trusted, denied) -> {
 
+                    if (!lint.matcher(id).matches()) {
+                        throw new IllegalStateException("Unable to parse plot! Invalid ID!");
+                    }
+                    Plot out = new Plot(map, id, pos);
+
+                    if (name != null) out.setName(name);
+                    if (owner != null) out.setOwner(owner);
+                    if (trusted != null) out.trusted.addAll(trusted);
+                    if (denied != null) out.denied.addAll(denied);
+
+                    return out;
+                });
     }
 
     @Override
@@ -413,23 +381,15 @@ public class Plot implements IPlot {
     }
 
 
-    public static void registerPlaceholders(LangModule mod) {
+    public static void registerPlaceholders(PlaceholderManager manager) {
 
-        mod.registerInlinePlaceholder("creativeplots_plot_id", PlaceholderSupplier.create(IPlot.class, IPlot::getId));
-        mod.registerPlaceholder("creativeplots_plot_name", PlaceholderSupplier.create(IPlot.class, IPlot::getName));
+        manager.getInlinePlaceholders().register("creativeplots_plot_id", PlaceholderSupplier.create(IPlot.class, IPlot::getId));
+        manager.getPlaceholders().register("creativeplots_plot_name", PlaceholderSupplier.create(IPlot.class, IPlot::getName));
 
-        mod.registerPlaceholder("creativeplots_plot_owner", args -> {
-            MPlayer pl = null;
-            Plot plot = null;
-            for(Object o : args) {
-                if(o instanceof MPlayer) {
-                    pl = (MPlayer) o;
-                    continue;
-                }
-                if(o instanceof Plot) {
-                    plot = (Plot) o;
-                }
-            }
+        manager.getPlaceholders().register("creativeplots_plot_owner", ctx -> {
+            MPlayer pl = ctx.getArgument(MPlayer.class);
+            Plot plot = ctx.getArgument(Plot.class);
+
             if(plot == null) return null;
 
             return plot.getOwnerName(pl);
