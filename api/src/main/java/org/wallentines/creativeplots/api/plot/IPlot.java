@@ -111,9 +111,16 @@ public interface IPlot {
 
     Serializer<IPlot> serializer(IPlotWorld world);
 
+    void setTimeOfDay(Integer time);
 
     Integer getTimeOfDay();
 
-    boolean isRaining();
+    void setRaining(Boolean raining);
+    Boolean isRaining();
+
+    void setThundering(Boolean raining);
+    Boolean isThundering();
+
+    void forceRefresh();
 
 }

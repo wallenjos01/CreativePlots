@@ -21,6 +21,8 @@
   "command.deny.success": "&f%player_name% &adenied! They can no longer enter this plot.",
   "command.allow.success": "&f%player_name% &aallowed! They can once again enter this plot.",
   "command.merge.success": "&aPlot merged!",
+  "command.time.success": "&aPlot time updated!",
+  "command.weather.success": "&aPlot weather updated!",
   "plot.title": "%creativeplots_plot_name%",
   "plot.subtitle": "&7Owned by %creativeplots_plot_owner%",
   "plot.null_owner": "Server"

@@ -74,11 +74,11 @@ public interface IPlotWorld {
 
 
     /**
-     * Queries whether or not a player place or break blocks at a particular location
+     * Queries whether a player can place or break blocks at a particular location
      *
      * @param pl    The player in question
      * @param block The location where the block will be placed or broken
-     * @return      Whether or not the player can modify at that location
+     * @return      Whether the player can modify at that location
      */
     boolean canModify(MPlayer pl, Vec3i block);
 
@@ -96,5 +96,7 @@ public interface IPlotWorld {
     void onEnteredWorld(MPlayer player);
     void onLeftWorld(MPlayer player);
     void onTick();
+
+    void forceRefresh(IPlot plot);
 
 }

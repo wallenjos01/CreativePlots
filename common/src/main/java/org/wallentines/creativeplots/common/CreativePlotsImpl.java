@@ -6,6 +6,7 @@ import org.wallentines.mdcfg.ConfigSection;
 import org.wallentines.mdcfg.serializer.ConfigContext;
 import org.wallentines.mdcfg.serializer.SerializeResult;
 import org.wallentines.midnightcore.api.FileConfig;
+import org.wallentines.midnightcore.api.MidnightCoreAPI;
 import org.wallentines.midnightcore.api.player.MPlayer;
 import org.wallentines.midnightcore.api.text.LangProvider;
 import org.wallentines.midnightcore.api.text.LangRegistry;
@@ -43,6 +44,12 @@ public class CreativePlotsImpl extends CreativePlotsAPI {
 
         loadConfig();
 
+        MidnightCoreAPI.onServerStartup(server ->
+            server.tickEvent().register(this, ev -> {
+                for(IPlotWorld world : CreativePlotsAPI.getInstance().getWorlds()) {
+                    world.onTick();
+                }
+            }));
     }
 
     public long reload() {

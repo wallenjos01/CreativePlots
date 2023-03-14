@@ -34,6 +34,9 @@ public class Plot implements IPlot {
 
     private UUID owner;
     private MComponent friendlyName;
+    private Integer timeOverride;
+    private Boolean rainOverride;
+    private Boolean thunderOverride;
 
     private final Set<UUID> trusted;
     private final Set<UUID> denied;
@@ -350,16 +353,22 @@ public class Plot implements IPlot {
         return ObjectSerializer.create(
                 PlotPos.SERIALIZER.listOf().entry("positions", Plot::getPositions),
                 Serializer.STRING.entry("id", Plot::getId),
+                Serializer.INT.entry("time", Plot::getTimeOfDay).optional(),
+                Serializer.BOOLEAN.entry("rain", Plot::isRaining).optional(),
+                Serializer.BOOLEAN.entry("thunder", Plot::isThundering).optional(),
                 MComponent.SERIALIZER.entry("name", Plot::getName).optional(),
                 Serializer.UUID.entry("owner", Plot::getOwner).optional(),
                 Serializer.UUID.listOf().<Plot>entry("trusted", p -> p.trusted).optional(),
                 Serializer.UUID.listOf().<Plot>entry("denied", p -> p.denied).optional(),
-                (pos, id, name, owner, trusted, denied) -> {
+                (pos, id, time, rain, thunder, name, owner, trusted, denied) -> {
 
                     if (!lint.matcher(id).matches()) {
                         throw new IllegalStateException("Unable to parse plot! Invalid ID!");
                     }
                     Plot out = new Plot(map, id, pos);
+                    out.timeOverride = time;
+                    out.rainOverride = rain;
+                    out.thunderOverride = thunder;
 
                     if (name != null) out.setName(name);
                     if (owner != null) out.setOwner(owner);
@@ -371,13 +380,37 @@ public class Plot implements IPlot {
     }
 
     @Override
-    public Integer getTimeOfDay() {
-        return 6000;
+    public void setTimeOfDay(Integer time) {
+        this.timeOverride = time;
     }
 
     @Override
-    public boolean isRaining() {
-        return false;
+    public Integer getTimeOfDay() {
+        return timeOverride;
+    }
+
+    @Override
+    public void setRaining(Boolean raining) {
+        rainOverride = raining;
+    }
+    @Override
+    public Boolean isRaining() {
+        return rainOverride;
+    }
+
+    @Override
+    public void setThundering(Boolean thundering) {
+        thunderOverride = thundering;
+    }
+
+    @Override
+    public Boolean isThundering() {
+        return thunderOverride;
+    }
+
+    @Override
+    public void forceRefresh() {
+        map.forceRefresh(this);
     }
 
 

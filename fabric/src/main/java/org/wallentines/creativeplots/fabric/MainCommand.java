@@ -1,6 +1,8 @@
 package org.wallentines.creativeplots.fabric;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -18,15 +20,12 @@ import org.wallentines.mdcfg.Tuples;
 import org.wallentines.midnightcore.api.item.InventoryGUI;
 import org.wallentines.midnightcore.api.item.MItemStack;
 import org.wallentines.midnightcore.api.player.Location;
-import org.wallentines.midnightcore.api.text.CustomPlaceholderInline;
-import org.wallentines.midnightcore.api.text.MTextComponent;
-import org.wallentines.midnightcore.api.text.TextColor;
+import org.wallentines.midnightcore.api.text.*;
 import org.wallentines.midnightcore.fabric.util.CommandUtil;
 import org.wallentines.midnightlib.math.Color;
 import org.wallentines.midnightlib.math.Vec3d;
 import org.wallentines.midnightlib.math.Vec3i;
 import org.wallentines.midnightcore.api.player.MPlayer;
-import org.wallentines.midnightcore.api.text.MStyle;
 import org.wallentines.midnightcore.fabric.player.FabricPlayer;
 import org.wallentines.midnightcore.fabric.util.ConversionUtil;
 import net.minecraft.commands.CommandSourceStack;
@@ -82,7 +81,7 @@ public class MainCommand {
                 )
                 .then(Commands.literal("rename")
                     .requires(Permissions.require("creativeplots.command.rename", 2))
-                    .then(Commands.argument("name", StringArgumentType.string())
+                    .then(Commands.argument("name", StringArgumentType.greedyString())
                         .executes(context -> executeRename(context, context.getArgument("name", String.class)))
                     )
                 )
@@ -113,6 +112,26 @@ public class MainCommand {
                 .then(Commands.literal("merge")
                     .requires(Permissions.require("creativeplots.command.merge", 2))
                     .executes(this::executeMerge)
+                )
+                .then(Commands.literal("time")
+                    .requires(Permissions.require("creativeplots.command.time", 2))
+                    .then(Commands.literal("reset")
+                        .executes(context -> executeTime(context, null))
+                    )
+                    .then(Commands.argument("time", IntegerArgumentType.integer(0, 24000))
+                        .executes(context -> executeTime(context, context.getArgument("time", Integer.class)))
+                    )
+                )
+                .then(Commands.literal("weather")
+                    .requires(Permissions.require("creativeplots.command.weather", 2))
+                    .then(Commands.literal("reset")
+                            .executes(context -> executeWeather(context, null, null))
+                    )
+                    .then(Commands.argument("rain", BoolArgumentType.bool())
+                        .then(Commands.argument("thunder", BoolArgumentType.bool())
+                            .executes(context -> executeWeather(context, context.getArgument("rain", Boolean.class), context.getArgument("thunder", Boolean.class)))
+                        )
+                    )
                 )
         );
 
@@ -158,39 +177,11 @@ public class MainCommand {
 
         Region reg = pos.getRegion(pw);
         BlockPos.MutableBlockPos bpos = new BlockPos.MutableBlockPos();
-//
-//        Vec3i lower = reg.getLowerBound();
-//        Vec3i upper = reg.getUpperBound();
-//
-//        for(int x = lower.getX() - 1 ; x < upper.getX() + 1 ; x++) {
-//            bpos.set(x, borderHeight, lower.getZ() - 1);
-//            l.setBlock(bpos, state, 2);
-//            bpos.set(x, borderHeight, upper.getZ());
-//            l.setBlock(bpos, state, 2);
-//        }
-//
-//        for(int z = lower.getZ() ; z < upper.getZ() ; z++) {
-//            bpos.set(lower.getX() - 1, borderHeight, z);
-//            l.setBlock(bpos, state, 2);
-//            bpos.set(upper.getX(), borderHeight, z);
-//            l.setBlock(bpos, state, 2);
-//        }
 
         reg.forEachBorder(vec2i -> {
             bpos.set(vec2i.getX(), borderHeight, vec2i.getY());
             l.setBlock(bpos, state, 2);
         });
-
-//        for (int x = reg.getLowerBound().getX(); x < reg.getUpperBound().getX() + 1; x++) {
-//            for (int z = reg.getLowerBound().getZ(); z < reg.getUpperBound().getZ() + 1; z++) {
-//
-//                if (!PlotPos.isPlotBorder(x, z, pw.getPlotSize(), pw.getRoadSize())) continue;
-//
-//                bpos.set(x, pw.getGenerationHeight() + 1, z);
-//                l.setBlock(bpos, state, 2);
-//                l.blockUpdated(bpos, state.getBlock());
-//            }
-//        }
 
         return 1;
     }
@@ -217,7 +208,7 @@ public class MainCommand {
         confirm.setItem(
                 3,
                 MItemStack.Builder
-                        .woolWithColor(new TextColor(Color.fromRGBI(10)))
+                        .woolWithColor(Color.fromRGBI(10))
                         .withName(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.yes", pl))
                         .build(),
                 (type, user) -> {
@@ -229,7 +220,7 @@ public class MainCommand {
         confirm.setItem(
                 5,
                 MItemStack.Builder
-                        .woolWithColor(new TextColor(Color.fromRGBI(12)))
+                        .woolWithColor(Color.fromRGBI(12))
                         .withName(CreativePlotsAPI.getInstance().getLangProvider().getMessage("command.delete.gui.no", pl))
                         .build(),
                 (type, user) -> confirm.close(user));
@@ -290,8 +281,15 @@ public class MainCommand {
             return 0;
         }
 
-        plot.setName(new MTextComponent(name).withStyle(new MStyle().withColor(Color.fromRGBI(6))));
-        CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.rename.success", CustomPlaceholderInline.create("name", name));
+        MComponent outName;
+        if(pl.hasPermission("creativeplots.command.rename.raw", 2)) {
+            outName = MComponent.parse(name);
+        } else {
+            outName = new MTextComponent(name);
+        }
+        outName = outName.withStyle(outName.getStyle().fillFrom(new MStyle().withColor(Color.fromRGBI(6))));
+        plot.setName(outName);
+        CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.rename.success", CustomPlaceholder.create("name", outName));
 
         return 1;
 
@@ -491,7 +489,6 @@ public class MainCommand {
         plot.merge(other);
         ((Plot) plot).register(pw.getPlotRegistry());
 
-
         if (roads != null) {
 
             int height = pw.getGenerationHeight();
@@ -499,82 +496,6 @@ public class MainCommand {
             BlockState border = BuiltInRegistries.BLOCK.get(ConversionUtil.toResourceLocation(pw.getClaimedBorderBlock())).defaultBlockState();
             BlockState air = Blocks.AIR.defaultBlockState();
             BlockState top = ((PlotworldGenerator) gen).settings().getBlockForLayer(pw.getGenerationHeight(), l.getMinBuildHeight());
-//
-//            int plotSize = pw.getPlotSize();
-//            int roadSize = pw.getRoadSize();
-//            int halfSize = plotSize / 2;
-//
-//            // Roads
-//            for(PlotPos p : new PlotPos[] { pos, otherPos } ) {
-//
-//                Vec3i loc = pw.toLocation(p).add(halfSize);
-//
-//                for (PlotDirection d : PlotDirection.values()) {
-//
-//                    if(!plot.getPositions().contains(p.getAdjacent(d))) continue;
-//
-//                    Vec3i r0 = new Vec3i(
-//                            loc.getX() + (halfSize * d.getXShift()),
-//                            0,
-//                            loc.getZ() + (halfSize * d.getZShift())
-//                    );
-//
-//                    Vec3i r1 = new Vec3i(
-//                            r0.getX() - (halfSize * d.getZShift()),
-//                            0,
-//                            r0.getZ() - (halfSize * d.getXShift())
-//                    );
-//
-//                    Vec3i r2 = r1.add(new Vec3i(
-//                            (plotSize * d.getZShift()) + (roadSize * d.getXShift()),
-//                            0,
-//                            (plotSize * d.getXShift()) + (roadSize * d.getZShift()))
-//                    );
-//
-//                    Region crossed = new Region(r1, r2);
-//                    roads.add(crossed);
-//                }
-//
-//                // Corners
-//                boolean[] corners = { true, true, true, true };
-//                for(int x = -1 ; x <= 1 ; x++) {
-//                    for(int z = -1 ; z <= 1 ; z++) {
-//
-//                        if(x == 0 && z == 0) continue;
-//
-//                        PlotPos surrounding = new PlotPos(p.getX() + x, p.getZ() + z);
-//                        if(!plot.getPositions().contains(surrounding)) {
-//                            if(x <= 0 && z <= 0) {
-//                                corners[0] = false;
-//                            }
-//                            if(x >= 0 && z <= 0) {
-//                                corners[1] = false;
-//                            }
-//                            if(x <= 0 && z >= 0) {
-//                                corners[2] = false;
-//                            }
-//                            if(x >= 0 && z >= 0) {
-//                                corners[3] = false;
-//                            }
-//                        }
-//                    }
-//                }
-//
-//                for(int i = 0 ; i < 4 ; i++) {
-//
-//                    if(!corners[i]) continue;
-//
-//                    int shiftX = i % 2 == 0 ? -1 : 1;
-//                    int shiftZ = i > 2 ? 1 : -1;
-//
-//                    Vec3i c1 = loc.add(new Vec3i(shiftX * halfSize, 0, shiftZ * halfSize));
-//                    Vec3i c2 = new Vec3i(shiftX * roadSize, 0, shiftZ * roadSize);
-//
-//                    Region corner = Region.normalized(c1,c2);
-//                    roads.add(corner);
-//                }
-//
-//            }
 
             // Remove roads
             for(Region road : roads) {
@@ -601,18 +522,6 @@ public class MainCommand {
                     bpos.set(vec2i.getX(), height + 1, vec2i.getY());
                     l.setBlock(bpos, border, 2);
                 });
-
-//                Region newReg = reg.outset(1);
-//                for(int x = newReg.getLowerBound().getX() ; x <= newReg.getUpperBound().getX() ; x++) {
-//                    for(int z = newReg.getLowerBound().getZ() ; z <= newReg.getUpperBound().getZ() ; z++) {
-//
-//                        if(plot.contains(new Vec3i(x,height,z))) continue;
-//
-//                        bpos.set(x, height + 1, z);
-//                        l.setBlock(bpos, border, 2);
-//                        l.blockUpdated(bpos, border.getBlock());
-//                    }
-//                }
             }
         }
 
@@ -668,4 +577,56 @@ public class MainCommand {
 
         return regions;
     }
+
+    private int executeTime(CommandContext<CommandSourceStack> context, Integer time) throws CommandSyntaxException {
+
+        MPlayer pl = FabricPlayer.wrap(context.getSource().getPlayerOrException());
+
+        IPlotWorld pw = CreativePlotsAPI.getInstance().getPlotWorld(pl);
+        if(pw == null) {
+            CommandUtil.sendCommandFailure(context, CreativePlotsAPI.getInstance().getLangProvider(), "command.error.invalid_world");
+            return 0;
+        }
+
+        Vec3i location = pl.getLocation().getCoordinates().truncate();
+        IPlot plot = pw.getPlot(location);
+
+        if(plot == null || !plot.hasOwnerPermissions(pl)) {
+            CommandUtil.sendCommandFailure(context, CreativePlotsAPI.getInstance().getLangProvider(), "command.error.not_claimed");
+            return 0;
+        }
+
+        plot.setTimeOfDay(time);
+        plot.forceRefresh();
+        CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.time.success");
+
+        return 1;
+    }
+
+    private int executeWeather(CommandContext<CommandSourceStack> context, Boolean rain, Boolean thunder) throws CommandSyntaxException {
+
+        MPlayer pl = FabricPlayer.wrap(context.getSource().getPlayerOrException());
+
+        IPlotWorld pw = CreativePlotsAPI.getInstance().getPlotWorld(pl);
+        if(pw == null) {
+            CommandUtil.sendCommandFailure(context, CreativePlotsAPI.getInstance().getLangProvider(), "command.error.invalid_world");
+            return 0;
+        }
+
+        Vec3i location = pl.getLocation().getCoordinates().truncate();
+        IPlot plot = pw.getPlot(location);
+
+        if(plot == null || !plot.hasOwnerPermissions(pl)) {
+            CommandUtil.sendCommandFailure(context, CreativePlotsAPI.getInstance().getLangProvider(), "command.error.not_claimed");
+            return 0;
+        }
+
+        plot.setRaining(rain);
+        plot.setThundering(thunder);
+        plot.forceRefresh();
+        CommandUtil.sendCommandSuccess(context, CreativePlotsAPI.getInstance().getLangProvider(), false, "command.weather.success");
+
+        return 1;
+    }
+
 }

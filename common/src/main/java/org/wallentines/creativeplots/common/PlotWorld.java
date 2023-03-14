@@ -49,7 +49,6 @@ public class PlotWorld implements IPlotWorld {
 
         float pos = roadSize % 2 == 0 ? 0.5f : 0.0f;
         spawnLocation = new Vec3d(pos, genHeight, pos);
-
     }
 
 
@@ -142,7 +141,9 @@ public class PlotWorld implements IPlotWorld {
 
     @Override
     public void onEnteredWorld(MPlayer player) {
-        locations.put(player, player.getLocation().getCoordinates());
+        Vec3d location = player.getLocation().getCoordinates();
+        locations.put(player, location);
+        playerMoved(player, new Vec3d(0,0,0), location);
     }
 
     @Override
@@ -161,6 +162,17 @@ public class PlotWorld implements IPlotWorld {
                 playerMoved(ent.getKey(), oloc, ploc);
             }
         }
+    }
+
+    @Override
+    public void forceRefresh(IPlot plot) {
+
+        locations.forEach((player, loc) -> {
+            if(getPlot(loc.truncate()) == plot) {
+                plot.onLeave(player);
+                plot.onEnter(player);
+            }
+        });
     }
 
     @Override
@@ -193,19 +205,23 @@ public class PlotWorld implements IPlotWorld {
 
         IPlot oldPlot = getPlot(oldLoc.truncate());
         IPlot newPlot = getPlot(newLoc.truncate());
-        if(newPlot != null && oldPlot != newPlot) {
+        if(oldPlot == newPlot) return;
+
+        if(oldPlot != null) {
+            oldPlot.onLeave(pl);
+        }
+
+        if(newPlot != null) {
 
             if(newPlot.isDenied(pl.getUUID())) {
                 locations.put(pl, oldLoc);
                 pl.teleport(new Location(pl.getLocation().getWorldId(), oldLoc, pl.getLocation().getYaw(), pl.getLocation().getPitch()));
-                oldPlot.onLeave(pl);
 
             } else {
 
                 newPlot.onEnter(pl);
             }
         }
-
     }
 
     public static final Serializer<PlotWorld> SERIALIZER = new Serializer<>() {
