@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "${id}",
+  "version": "${version}",
+  "entrypoints": {
+    "main": [
+      "org.wallentines.creativeplots.Init"
+    ]
+  },
+  "mixins": [
+    "creativeplots.mixins.json"
+  ]
+}

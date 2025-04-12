@@ -1,0 +1,4 @@
+{
+  "type": "org.wallentines.creativeplots.CreativePlots",
+  "factory": "org.wallentines.creativeplots.CreativePlots::create"
+}

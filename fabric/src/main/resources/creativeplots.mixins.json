@@ -1,0 +1,23 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.wallentines.creativeplots.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "MixinBlockPlaceContext",
+    "MixinEntity",
+    "MixinExplosionDamageCalculator",
+    "MixinFeature",
+    "MixinPlayerList",
+    "MixinServerLevel",
+    "MixinSimpleExplosionDamageCalculator",
+    "MixinSpawnEgg",
+    "MixinTreeFeature",
+    "MixinWitherSkullBlock"
+  ],
+  "client": [],
+  "server": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

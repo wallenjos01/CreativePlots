@@ -1,0 +1,8 @@
+{
+  "name": "plot",
+  "type": "builder",
+  "value": "org.wallentines.creativeplots.PlotCommand::build",
+  "state_object": "creativeplots:instance",
+  "permission_node": "creativeplots.command",
+  "permission_level": 2
+}
