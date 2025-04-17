@@ -1,5 +1,0 @@
-{
-    "type": "method",
-    "value": "org.wallentines.creativeplots.CreativePlots::init",
-    "state_object": "creativeplots:instance"
-}

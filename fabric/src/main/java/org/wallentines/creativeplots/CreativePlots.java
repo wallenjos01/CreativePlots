@@ -1,16 +1,7 @@
 package org.wallentines.creativeplots;
 
-import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.execution.ExecutionContext;
-import net.minecraft.commands.execution.Frame;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ReloadableServerRegistries;
-import net.minecraft.server.ReloadableServerResources;
-import net.minecraft.server.packs.resources.ResourceManager;
 import org.jetbrains.annotations.Nullable;
 import org.wallentines.mdcfg.mc.api.ServerConfigFolders;
 import org.wallentines.pseudonym.MessagePipeline;
@@ -27,8 +18,7 @@ public class CreativePlots {
 
     LangManager<?, Component> langManager;
 
-    private void init(MinecraftServer server) {
-
+    private CreativePlots(MinecraftServer server) {
 
         Path configDir = ServerConfigFolders.getConfigFolder(server).resolve("CreativePlots");
         try { Files.createDirectories(configDir); } catch (Exception e) { throw new RuntimeException(e); }
@@ -69,18 +59,8 @@ public class CreativePlots {
         return langManager;
     }
 
-    public static CreativePlots create(ReloadableServerResources resources, ReloadableServerRegistries.LoadResult loadResult, ResourceManager resourceManager, @Nullable CreativePlots previous) {
-        return new CreativePlots();
+    public static CreativePlots create(MinecraftServer server, @Nullable CreativePlots previous) {
+        return new CreativePlots(server);
     }
 
-    public static void init(CommandSourceStack css,
-                            CompoundTag tag,
-                            ResourceLocation id,
-                            CommandDispatcher<CommandSourceStack> dispatcher,
-                            ExecutionContext<CommandSourceStack> exeContext,
-                            Frame frame,
-                            CreativePlots data) {
-
-        data.init(css.getServer());
-    }
 }
