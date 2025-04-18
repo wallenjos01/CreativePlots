@@ -29,7 +29,7 @@ dependencies {
 
     modImplementation("me.lucko:fabric-permissions-api:0.3.3")
     modImplementation("org.wallentines:midnightlib:2.1.0")
-    modImplementation("org.wallentines:databridge:0.8.0")
+    modImplementation("org.wallentines:databridge:0.8.1")
     modImplementation("org.wallentines:inventory-menus:0.2.0")
     modImplementation("org.wallentines:pseudonym-minecraft:0.3.0")
     modImplementation("org.wallentines:midnightcfg-platform-minecraft:3.3.0")
