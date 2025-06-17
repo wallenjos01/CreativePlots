@@ -20,7 +20,6 @@ import com.sk89q.worldedit.world.block.BlockTypes;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
-
 import org.wallentines.midnightlib.math.Vec2i;
 import org.wallentines.midnightlib.math.Vec3i;
 
@@ -29,32 +28,32 @@ import java.util.Objects;
 
 public class WorldeditIntegration {
 
-
     private static class PlotExtent extends AbstractDelegateExtent {
 
         static final BaseBlock AIR = Objects.requireNonNull(BlockTypes.AIR).getDefaultState().toBaseBlock();
         static final BlockState AIR_STATE = BlockTypes.AIR.getDefaultState();
 
         private final Plot plot;
+
         protected PlotExtent(Extent extent, Plot plot) {
             super(extent);
             this.plot = plot;
         }
 
-
         private boolean blockWithin(int x, int y, int z) {
-            Vec3i pos = new Vec3i(x,y,z);
+            Vec3i pos = new Vec3i(x, y, z);
             return plot.contains(pos);
         }
 
         @Override
-        public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 location, T block) throws WorldEditException {
+        public <T extends BlockStateHolder<T>> boolean setBlock(BlockVector3 location, T block)
+                throws WorldEditException {
             return blockWithin(location.x(), location.y(), location.z()) && super.setBlock(location, block);
         }
 
         @Override
         public @Nullable Entity createEntity(Location location, BaseEntity entity) {
-            if(blockWithin(location.getBlockX(), location.getBlockY(), location.getBlockZ())) {
+            if (blockWithin(location.getBlockX(), location.getBlockY(), location.getBlockZ())) {
                 return super.createEntity(location, entity);
             }
             return null;
@@ -67,7 +66,7 @@ public class WorldeditIntegration {
 
         @Override
         public BlockState getBlock(BlockVector3 position) {
-            if(blockWithin(position.x(), position.y(), position.z())) {
+            if (blockWithin(position.x(), position.y(), position.z())) {
                 return super.getBlock(position);
             }
             return AIR_STATE;
@@ -75,7 +74,7 @@ public class WorldeditIntegration {
 
         @Override
         public BaseBlock getFullBlock(BlockVector3 position) {
-            if(blockWithin(position.x(), position.y(), position.z())) {
+            if (blockWithin(position.x(), position.y(), position.z())) {
                 return super.getFullBlock(position);
             }
             return AIR;
@@ -103,7 +102,7 @@ public class WorldeditIntegration {
             @Subscribe
             public void sessionCallback(EditSessionEvent event) {
 
-                if(event.getActor() == null || !event.getActor().isPlayer()) {
+                if (event.getActor() == null || !event.getActor().isPlayer()) {
                     return;
                 }
 
@@ -116,20 +115,21 @@ public class WorldeditIntegration {
                     throw new RuntimeException(ex);
                 }
 
-                Plotworld pw = (Plotworld) spl.serverLevel();
-                if(pw.getPlotMap() == null) {
+                Plotworld pw = (Plotworld) spl.level();
+                if (pw.getPlotMap() == null) {
                     return;
                 }
-                if(pw.isAdmin(spl.getUUID())) return;
+                if (pw.isAdmin(spl.getUUID()))
+                    return;
 
                 Vec2i plotPos = pw.getPlotMap().getPlotPosition(spl.getBlockX(), spl.getBlockZ());
-                if(plotPos == null) {
+                if (plotPos == null) {
                     event.setExtent(new NullExtent());
                     return;
                 }
 
                 Plot p = pw.getPlotAt(plotPos);
-                if(p == null || !p.mayModify(spl.getUUID())) {
+                if (p == null || !p.mayModify(spl.getUUID())) {
                     event.setExtent(new NullExtent());
                     return;
                 }

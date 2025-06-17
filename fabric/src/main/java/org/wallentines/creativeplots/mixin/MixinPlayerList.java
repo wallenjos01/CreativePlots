@@ -12,9 +12,9 @@ import org.wallentines.creativeplots.Plotworld;
 @Mixin(PlayerList.class)
 public class MixinPlayerList {
 
-    @Inject(method="sendPlayerPermissionLevel(Lnet/minecraft/server/level/ServerPlayer;I)V", at=@At("TAIL"))
+    @Inject(method = "sendPlayerPermissionLevel(Lnet/minecraft/server/level/ServerPlayer;I)V", at = @At("TAIL"))
     private void onPermissionUpdate(ServerPlayer serverPlayer, int i, CallbackInfo ci) {
-        Plotworld pw = (Plotworld) serverPlayer.serverLevel();
+        Plotworld pw = (Plotworld) serverPlayer.level();
         pw.setAdmin(serverPlayer.getUUID(), Permissions.check(serverPlayer, "creativeplots.plotworld", 2));
     }
 
