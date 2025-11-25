@@ -19,6 +19,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
@@ -213,8 +214,8 @@ public class PlotCommand {
                                             if (p == null)
                                                 return null;
                                             return SharedSuggestionProvider.suggest(p.editors().stream()
-                                                    .map(uuid -> ctx.getSource().getServer().getProfileCache().get(uuid)
-                                                            .map(GameProfile::getName).orElse(uuid.toString())),
+                                                    .map(uuid -> ctx.getSource().getServer().services().nameToIdCache().get(uuid)
+                                                            .map(NameAndId::name).orElse(uuid.toString())),
                                                     sBuilder);
                                         })
                                         .executes(ctx -> {
@@ -277,8 +278,8 @@ public class PlotCommand {
         String username = StringArgumentType.getString(ctx, "name");
         ServerPlayer userPlayer = ctx.getSource().getServer().getPlayerList().getPlayerByName(username);
         if (userPlayer == null) {
-            return new ResolvableProfile(Optional.of(username), Optional.empty(), new PropertyMap()).resolve()
-                    .thenApply(res -> res.gameProfile().getId());
+            return ResolvableProfile.createUnresolved(username).resolveProfile(ctx.getSource().getServer().services().profileResolver())
+                    .thenApply(res -> res.id());
         } else {
             return CompletableFuture.completedFuture(userPlayer.getUUID());
         }

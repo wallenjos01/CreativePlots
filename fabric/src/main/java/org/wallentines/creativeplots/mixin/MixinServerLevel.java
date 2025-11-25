@@ -10,7 +10,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.util.ProgressListener;
 import net.minecraft.world.RandomSequences;
 import net.minecraft.world.entity.Entity;
@@ -60,7 +59,7 @@ public abstract class MixinServerLevel {
     @Inject(method="<init>", at=@At("TAIL"))
     private void onInit(MinecraftServer minecraftServer, Executor executor, LevelStorageSource.LevelStorageAccess access,
                         ServerLevelData levelData, ResourceKey<Level> resourceKey, LevelStem levelStem,
-                        ChunkProgressListener listener, boolean debug, long seed, List<CustomSpawner> list,
+                        boolean debug, long seed, List<CustomSpawner> list,
                         boolean tickTime, RandomSequences randomSequences, CallbackInfo ci) {
 
         if(!(levelStem.generator() instanceof PlotworldGenerator gen)) return;
@@ -190,7 +189,7 @@ public abstract class MixinServerLevel {
                 Color.fromRGBI(6),
                 plotPos.toString(),
                 player.getUUID(),
-                player.getGameProfile().getName(),
+                player.getGameProfile().name(),
                 Set.of());
 
         creativeplots$generator.generateBorder(self, plotPos, true);
