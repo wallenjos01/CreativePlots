@@ -12,11 +12,13 @@ import com.sk89q.worldedit.extent.NullExtent;
 import com.sk89q.worldedit.math.BlockVector3;
 import com.sk89q.worldedit.util.Location;
 import com.sk89q.worldedit.util.eventbus.Subscribe;
+import com.sk89q.worldedit.world.World;
 import com.sk89q.worldedit.world.biome.BiomeType;
 import com.sk89q.worldedit.world.block.BaseBlock;
 import com.sk89q.worldedit.world.block.BlockState;
 import com.sk89q.worldedit.world.block.BlockStateHolder;
 import com.sk89q.worldedit.world.block.BlockTypes;
+import com.sk89q.worldedit.fabric.FabricWorld;
 import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
@@ -83,19 +85,19 @@ public class WorldeditIntegration {
 
     public static void register() {
 
-        Field field;
-        Field baseField;
-        try {
-            Class<?> proxyClazz = Class.forName("com.sk89q.worldedit.extension.platform.PlayerProxy");
-            baseField = proxyClazz.getDeclaredField("basePlayer");
-            baseField.setAccessible(true);
-
-            Class<?> clazz = Class.forName("com.sk89q.worldedit.fabric.FabricPlayer");
-            field = clazz.getDeclaredField("player");
-            field.setAccessible(true);
-        } catch (ReflectiveOperationException ex) {
-            throw new RuntimeException(ex);
-        }
+        //Field field;
+        // Field baseField;
+        // try {
+        //     Class<?> proxyClazz = Class.forName("com.sk89q.worldedit.extension.platform.PlayerProxy");
+        //     baseField = proxyClazz.getDeclaredField("basePlayer");
+        //     baseField.setAccessible(true);
+        //
+        //     Class<?> clazz = Class.forName("com.sk89q.worldedit.fabric.FabricPlayer");
+        //     field = clazz.getDeclaredField("player");
+        //     field.setAccessible(true);
+        // } catch (ReflectiveOperationException ex) {
+        //     throw new RuntimeException(ex);
+        // }
 
         WorldEdit.getInstance().getEventBus().register(new Object() {
 
@@ -108,28 +110,31 @@ public class WorldeditIntegration {
 
                 AbstractPlayerActor actor = (AbstractPlayerActor) event.getActor();
 
-                ServerPlayer spl;
-                try {
-                    spl = (ServerPlayer) field.get(baseField.get(actor));
-                } catch (ReflectiveOperationException ex) {
-                    throw new RuntimeException(ex);
-                }
+                // ServerPlayer spl;
+                // try {
+                //     spl = (ServerPlayer) field.get(baseField.get(actor));
+                // } catch (ReflectiveOperationException ex) {
+                //     throw new RuntimeException(ex);
+                // }
 
-                Plotworld pw = (Plotworld) spl.level();
+                FabricWorld world = (FabricWorld) actor.getWorld();
+
+                Plotworld pw = (Plotworld) world.getWorld();
                 if (pw.getPlotMap() == null) {
                     return;
                 }
-                if (pw.isAdmin(spl.getUUID()))
+                if (pw.isAdmin(actor.getUniqueId()))
                     return;
 
-                Vec2i plotPos = pw.getPlotMap().getPlotPosition(spl.getBlockX(), spl.getBlockZ());
+                Location location = actor.getLocation();
+                Vec2i plotPos = pw.getPlotMap().getPlotPosition(location.getBlockX(), location.getBlockZ());
                 if (plotPos == null) {
                     event.setExtent(new NullExtent());
                     return;
                 }
 
                 Plot p = pw.getPlotAt(plotPos);
-                if (p == null || !p.mayModify(spl.getUUID())) {
+                if (p == null || !p.mayModify(actor.getUniqueId())) {
                     event.setExtent(new NullExtent());
                     return;
                 }

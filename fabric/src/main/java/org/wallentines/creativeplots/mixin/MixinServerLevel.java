@@ -6,7 +6,7 @@ import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -64,7 +64,7 @@ public abstract class MixinServerLevel {
 
         if(!(levelStem.generator() instanceof PlotworldGenerator gen)) return;
 
-        creativeplots$instance = ServerStateObjects.getStateObject(minecraftServer, CreativePlots.class, ResourceLocation.tryBuild("creativeplots", "instance")).orElseThrow();
+        creativeplots$instance = ServerStateObjects.getStateObject(minecraftServer, CreativePlots.class, Identifier.tryBuild("creativeplots", "instance")).orElseThrow();
         creativeplots$admins = new HashSet<>();
 
         ServerLevel lvl = (ServerLevel) (Object) this;
