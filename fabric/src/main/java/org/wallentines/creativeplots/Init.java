@@ -19,7 +19,7 @@ public class Init implements ModInitializer {
             Class.forName("com.sk89q.worldedit.fabric.FabricPlayer");
             WorldeditIntegration.register();
         } catch (ReflectiveOperationException e) {
-            log.error("Unable to initialize CreativePlots WorldEdit integration!", e);
+            log.error("Unable to initialize CreativePlots WorldEdit integration!");
         }
 
     }

@@ -2,14 +2,11 @@ package org.wallentines.creativeplots;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 
-public record RoadGeneratorSettings(PlotMap plotMap, Block roadBlock, Block borderBlock, Block claimedBorderBlock) {
+public record RoadGeneratorSettings(PlotMap plotMap, int plotFloor, int plotHeight) {
 
-    public RoadGeneratorSettings(int plotSize, int roadSize, Block roadBlock, Block borderBlock, Block claimedBorderBlock) {
-        this(new PlotMap(plotSize, roadSize), roadBlock, borderBlock, claimedBorderBlock);
+    public RoadGeneratorSettings(int plotSize, int roadSize, int borderSize, int plotFloor, int plotHeight) {
+        this(new PlotMap(plotSize, roadSize, borderSize), plotFloor, plotHeight);
     }
 
     public int plotSize() {
@@ -20,12 +17,16 @@ public record RoadGeneratorSettings(PlotMap plotMap, Block roadBlock, Block bord
         return plotMap.roadSize();
     }
 
+    public int borderSize() {
+        return plotMap.borderSize();
+    }
+
     public static final Codec<RoadGeneratorSettings> CODEC = RecordCodecBuilder.create((instance) -> instance.group(
             Codec.intRange(1, 1024).fieldOf("plot_size").forGetter(RoadGeneratorSettings::plotSize),
-            Codec.intRange(1, 1024).fieldOf("road_size").forGetter(RoadGeneratorSettings::roadSize),
-            BuiltInRegistries.BLOCK.byNameCodec().fieldOf("road_block").orElse(Blocks.AIR).forGetter(RoadGeneratorSettings::roadBlock),
-            BuiltInRegistries.BLOCK.byNameCodec().fieldOf("border_block").orElse(Blocks.AIR).forGetter(RoadGeneratorSettings::borderBlock),
-            BuiltInRegistries.BLOCK.byNameCodec().fieldOf("claimed_border_block").orElse(Blocks.AIR).forGetter(RoadGeneratorSettings::claimedBorderBlock)
+            Codec.intRange(0, 1024).fieldOf("road_size").forGetter(RoadGeneratorSettings::roadSize),
+            Codec.intRange(0, 1024).fieldOf("border_size").forGetter(RoadGeneratorSettings::borderSize),
+            Codec.intRange(0, 4096).optionalFieldOf("plot_floor", 0).forGetter(RoadGeneratorSettings::plotFloor),
+            Codec.intRange(0, 4096).optionalFieldOf("plot_height", 4096).forGetter(RoadGeneratorSettings::plotHeight)
     ).apply(instance, RoadGeneratorSettings::new));
 
 }

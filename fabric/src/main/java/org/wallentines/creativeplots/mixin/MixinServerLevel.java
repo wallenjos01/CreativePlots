@@ -10,6 +10,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.util.ProgressListener;
 import net.minecraft.world.RandomSequences;
 import net.minecraft.world.entity.Entity;
@@ -83,7 +84,7 @@ public abstract class MixinServerLevel {
 
     @Inject(method="addPlayer", at=@At("TAIL"))
     private void onJoin(ServerPlayer serverPlayer, CallbackInfo ci) {
-        if(Permissions.check(serverPlayer, "creativeplots.interact_anywhere", 2)) {
+        if(Permissions.check(serverPlayer, "creativeplots.interact_anywhere", PermissionLevel.GAMEMASTERS)) {
             creativeplots$admins.add(serverPlayer.getUUID());
         }
     }
@@ -91,29 +92,10 @@ public abstract class MixinServerLevel {
     @Inject(method="mayInteract", at=@At("RETURN"), cancellable = true)
     private void onMayInteract(Entity entity, BlockPos blockPos, CallbackInfoReturnable<Boolean> cir) {
 
-        if(!cir.getReturnValue()
-                || creativeplots$generator == null
-                || creativeplots$storage == null
-                || creativeplots$admins.contains(entity.getUUID()))
-            return;
+        if(!cir.getReturnValue()) return;
 
-        PlotMap map = creativeplots$generator.roadSettings().plotMap();
-        Vec2i plotPos = map.getPlotPosition(blockPos.getX(), blockPos.getZ());
-        if(plotPos == null) {
-            cir.setReturnValue(false);
-            return;
-        }
-
-        Plot plot = creativeplots$storage.getPlot(plotPos);
-        if(plot == null || !plot.contains(new Vec3i(blockPos.getX(), blockPos.getY(), blockPos.getZ()))) {
-            cir.setReturnValue(false);
-            return;
-        }
-
-        cir.setReturnValue(plot.mayModify(entity.getUUID()));
+        cir.setReturnValue(creativeplots_pw$canEntityModify(entity, blockPos));
     }
-
-
 
     public void creativeplots_pw$playerMoved(ServerPlayer player, BlockPos oldPos, BlockPos newPos) {
         if(creativeplots$generator == null || creativeplots$storage == null) return;
@@ -175,8 +157,10 @@ public abstract class MixinServerLevel {
 
         ServerLevel self = (ServerLevel) (Object) this;
 
-        PlotMap map = creativeplots$generator.roadSettings().plotMap();
-        CuboidRegion reg = map.getDefaultPlotRegion(plotPos, self.getMinY(), self.getHeight());
+        RoadGeneratorSettings roadSettings = creativeplots$generator.roadSettings();
+        PlotMap map = roadSettings.plotMap();
+
+        CuboidRegion reg = map.getDefaultPlotRegion(plotPos, self.getMinY() + roadSettings.plotFloor(), roadSettings.plotHeight());
         if(!reg.isWithin(new Vec3d(player.getX(), player.getY(), player.getZ()))) {
             return null;
         }
@@ -232,5 +216,28 @@ public abstract class MixinServerLevel {
         } else {
             creativeplots$admins.remove(uuid);
         }
+    }
+
+    public boolean creativeplots_pw$canEntityModify(Entity player, BlockPos blockPos) {
+
+
+        if(creativeplots$generator == null
+                || creativeplots$storage == null
+                || creativeplots$admins.contains(player.getUUID()))
+            return true;
+
+        PlotMap map = creativeplots$generator.roadSettings().plotMap();
+        Vec2i plotPos = map.getPlotPosition(blockPos.getX(), blockPos.getZ());
+        if(plotPos == null) {
+            return false;
+        }
+
+        Plot plot = creativeplots$storage.getPlot(plotPos);
+        if(plot == null || !plot.contains(new Vec3i(blockPos.getX(), blockPos.getY(), blockPos.getZ()))) {
+            return false;
+        }
+
+        return plot.mayModify(player.getUUID());
+
     }
 }

@@ -5,6 +5,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.wallentines.creativeplots.Plotworld;
 
 @Mixin(BlockPlaceContext.class)
 public class MixinBlockPlaceContext {
@@ -13,7 +14,7 @@ public class MixinBlockPlaceContext {
     private void onPlace(CallbackInfoReturnable<Boolean> cir) {
 
         BlockPlaceContext ctx = (BlockPlaceContext) (Object) this;
-        if(!ctx.getLevel().mayInteract(ctx.getPlayer(), ctx.getClickedPos())) {
+        if(!((Plotworld) ctx.getLevel()).canEntityModify(ctx.getPlayer(), ctx.getClickedPos())) {
             cir.setReturnValue(false);
         }
     }

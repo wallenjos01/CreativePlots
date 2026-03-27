@@ -1,7 +1,6 @@
 package org.wallentines.creativeplots;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Explosion;
 
@@ -16,13 +15,12 @@ public class ExplosionUtil {
             return true;
         }
 
-        Entity ent = explosion.getIndirectSourceEntity();
-        if(ent instanceof ServerPlayer spl) {
-            return explosion.level().mayInteract(spl, blockPos);
-        } else {
+        Entity indirect = explosion.getIndirectSourceEntity();
+        if(indirect == null) {
             return false;
         }
 
+        return pw.canEntityModify(indirect, blockPos);
     }
 
 }

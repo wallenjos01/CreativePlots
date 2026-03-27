@@ -13,7 +13,13 @@
     "MixinSimpleExplosionDamageCalculator",
     "MixinSpawnEgg",
     "MixinTreeFeature",
-    "MixinWitherSkullBlock"
+    "MixinWitherSkullBlock",
+    "MixinEntityType",
+    "MixinServerPacketListener",
+    "MixinFlintAndSteel",
+    "MixinFireCharge",
+    "MixinPlayer",
+    "MixinPistonBase"
   ],
   "client": [],
   "server": [],

@@ -1,7 +1,5 @@
 package org.wallentines.creativeplots;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.PropertyMap;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -30,7 +28,6 @@ import org.wallentines.midnightlib.math.Vec2i;
 import org.wallentines.pseudonym.PipelineContext;
 import org.wallentines.pseudonym.lang.LangManager;
 
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;

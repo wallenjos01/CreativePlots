@@ -19,7 +19,7 @@ public class TestPlotMap {
         // _+++++_=_+++++_
         // _+++++_=_+++++_
         // _+++++_=_+++++_
-        PlotMap map = new PlotMap(5, 3);
+        PlotMap map = new PlotMap(5, 1, 1);
 
         Assertions.assertNull(map.getPlotPosition(0, 0));
 
@@ -33,7 +33,7 @@ public class TestPlotMap {
     @Test
     public void testPlotRegion() {
 
-        PlotMap map = new PlotMap(5, 3);
+        PlotMap map = new PlotMap(5, 1, 1);
 
         CuboidRegion reg = map.getDefaultPlotRegion(new Vec2i(0,0), 0, 5);
 
@@ -45,7 +45,7 @@ public class TestPlotMap {
     @Test
     public void testPlotStart() {
 
-        PlotMap map = new PlotMap(5, 3);
+        PlotMap map = new PlotMap(5, 1, 1);
 
         Assertions.assertEquals(new Vec2i(2, 2), map.getPlotStart(new Vec2i(0, 0)));
         Assertions.assertEquals(new Vec2i(-6, 2), map.getPlotStart(new Vec2i(-1, 0)));

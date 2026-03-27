@@ -30,6 +30,9 @@ public class Plot {
     private Color color;
     private String name;
 
+    public int mobCount;
+    public int mobCap;
+
 
     public Plot(Plotworld world, Vec2i rootPosition, Set<Vec2i> positions, List<Region> regions, Color color, String name, UUID owner, String ownerName, Set<UUID> editors) {
         this.world = world;
@@ -41,6 +44,9 @@ public class Plot {
         this.owner = owner;
         this.ownerName = ownerName == null ? owner.toString() : ownerName;
         this.editors = new HashSet<>(editors);
+
+        this.mobCap = 256;
+        this.mobCount = 0;
     }
 
     public Plotworld world() {

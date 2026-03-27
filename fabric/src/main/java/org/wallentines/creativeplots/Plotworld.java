@@ -2,6 +2,8 @@ package org.wallentines.creativeplots;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+
 import org.wallentines.mdcfg.Tuples;
 import org.wallentines.midnightlib.math.Vec2i;
 
@@ -27,6 +29,6 @@ public interface Plotworld {
 
     void setAdmin(UUID uuid, boolean admin);
 
-
+    boolean canEntityModify(Entity player, BlockPos pos);
 
 }
